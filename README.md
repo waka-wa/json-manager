@@ -6,6 +6,9 @@ The JSON File Manager is a Python GUI application for processing and managing JS
 
 ![JSON File Manager Screenshot](JSON_File_Manager_results.png)
 
+## Warning
+This is still very much WIP, and as it has the capability to delete files so pleas proceed with caution
+
 ## Features
 
 - Select a directory containing JSON files
@@ -38,10 +41,8 @@ The JSON File Manager is a Python GUI application for processing and managing JS
 - tkinter
 - NumPy
 
-## Contributing
+## KNOWN BUGS
 
-Contributions are welcome! If you find any issues or have suggestions for improvement, please open an issue or submit a pull request.
-
-## License
-
-This project is licensed under the [MIT License](LICENSE).
+- After scanning it will display "0 results" despite finding files
+- While scanning it will display "0 matches found" despite finding matches
+- The sorting for the list of duplicate files seems to be bugged

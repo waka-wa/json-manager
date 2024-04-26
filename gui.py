@@ -35,8 +35,8 @@ def process_files():
 
     start_time = time.time()
 
-    duplicates = []
-    near_duplicates = []
+    duplicates = set()
+    near_duplicates = set()
 
     position_to_files, duplicate_positions, near_duplicate_positions, invalid_positions = find_duplicate_and_near_duplicate_positions(
         directory,
@@ -71,12 +71,12 @@ def process_files():
     duplicate_listbox.config(yscrollcommand=scrollbar.set)
     scrollbar.config(command=duplicate_listbox.yview)
 
-    for position in duplicates:
+    for position in duplicate_positions:
         for file_path in position_to_files[position]:
             duplicate_listbox.insert(tk.END, file_path)
         duplicate_listbox.insert(tk.END, "")  # Add a blank line between groups
 
-    for position in near_duplicates:
+    for position in near_duplicate_positions:
         for file_path in position_to_files[position]:
             duplicate_listbox.insert(tk.END, file_path)
         duplicate_listbox.insert(tk.END, "")  # Add a blank line between groups
@@ -100,7 +100,7 @@ def process_files():
         if sort_option == "exact" or sort_option == "similar":
             try:
                 file_list.sort(key=lambda x: (position_to_files[tuple(map(float, x.split()[-3:]))], x), reverse=(sort_option == "similar"))
-            except (IndexError, ValueError):
+            except (KeyError, IndexError, ValueError):
                 file_list.sort()  # Fallback to alphabetical sorting
         else:
             file_list.sort()
@@ -159,14 +159,14 @@ def process_files():
     save_button = tk.Button(duplicate_window, text="Save Results", command=save_results)
     save_button.pack(pady=10)
 
-    total_matches = len(duplicates) + len(near_duplicates)
+    total_matches = len(duplicate_positions) + len(near_duplicate_positions)
     total_files = progress_bar["maximum"]
     elapsed_time = end_time - start_time
     files_per_second = total_files / elapsed_time if elapsed_time > 0 else 0
 
     result_message = f"Process completed.\n\n"
-    result_message += f"Number of exact duplicate positions: {len(duplicates)}\n"
-    result_message += f"Number of near duplicate positions: {len(near_duplicates)}\n"
+    result_message += f"Number of exact duplicate positions: {len(duplicate_positions)}\n"
+    result_message += f"Number of near duplicate positions: {len(near_duplicate_positions)}\n"
     result_message += f"Total matches found: {total_matches}\n"
     result_message += f"Total files scanned: {total_files}\n"
     result_message += f"Files per second: {files_per_second:.2f}\n"
@@ -180,7 +180,7 @@ def update_progress(current, total, file_path):
     progress_bar["maximum"] = total
     current_file_label.config(text=f"Current File: {os.path.relpath(file_path, directory_entry.get())}", anchor="w")
 
-    total_matches = len(duplicates) + len(near_duplicates)
+    total_matches = len(duplicate_positions) + len(near_duplicate_positions)
     completion_percentage = (current / total) * 100 if total > 0 else 0
 
     matches_label.config(text=f"{total_matches} Matches Found")
