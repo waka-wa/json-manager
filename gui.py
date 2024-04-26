@@ -41,7 +41,7 @@ def process_files():
     duplicate_positions = set()
     near_duplicate_positions = set()
 
-    position_to_files, _, _, invalid_positions = find_duplicate_and_near_duplicate_positions(
+    position_to_files, duplicate_positions, near_duplicate_positions, invalid_positions = find_duplicate_and_near_duplicate_positions(
         directory,
         duplicates,
         near_duplicates,

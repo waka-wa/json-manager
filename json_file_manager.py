@@ -111,14 +111,15 @@ def find_duplicate_and_near_duplicate_positions(directory_path, duplicates, near
                 if rounded_position is not None:
                     if rounded_position in position_to_files:
                         position_to_files[rounded_position].append(file_path)
-                        duplicate_positions.add(rounded_position)  # Update the duplicate_positions set directly
+                        duplicate_positions.add(rounded_position)
                         duplicates.add(file_path)
                     elif find_near_duplicates:
                         for existing_position in position_to_files:
                             if np.all(np.abs(np.array(rounded_position) - np.array(existing_position)) <= tolerance):
                                 position_to_files[existing_position].append(file_path)
-                            near_duplicate_positions.add(existing_position)  # Update the near_duplicate_positions set directly
-                            near_duplicates.add(file_path)
+                                near_duplicate_positions.add(existing_position)
+                                near_duplicates.add(file_path)
+                                break
                         else:
                             position_to_files[rounded_position] = [file_path]
                     else:
@@ -135,7 +136,7 @@ def find_duplicate_and_near_duplicate_positions(directory_path, duplicates, near
         if progress_callback:
             progress_callback(index, total_files, file_path)
 
-    return position_to_files, duplicates, near_duplicates, invalid_positions
+    return position_to_files, duplicate_positions, near_duplicate_positions, invalid_positions
 
 def save_preferences(preferences):
     preferences_file = Path(script_dir, 'preferences.json')
