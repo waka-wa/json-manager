@@ -11,15 +11,13 @@ This is still very much WIP, and as it has the capability to delete files so ple
 
 ## Features
 
-- Select a directory containing JSON files
 - Clean JSON data:
   - Clear the 'name' field
   - Write the filename to the 'name' field
   - Remove the 'description' field
 - Find exact duplicate JSON files based on the 'position' field
-- Find similar duplicate JSON files within a specified tolerance
+  - Find similar duplicate JSON files within a specified tolerance
 - Round position values to a specified decimal places
-- Display progress and results in the GUI
 - Sort and delete duplicate/near-duplicate files
 - Save results to a text file
 
@@ -31,9 +29,8 @@ This is still very much WIP, and as it has the capability to delete files so ple
 4. Select the directory containing the JSON files you want to process.
 5. Choose the desired cleaning and duplicate finding options.
 6. Click the "Begin!" button to start processing the files.
-7. View the progress and results in the GUI.
-8. Sort and delete duplicate/near-duplicate files as needed.
-9. Save the results to a text file if desired.
+7. Delete or move duplicate/near-duplicate files as needed.
+8. Save the results to a text file if desired.
 
 ## Requirements
 
@@ -43,7 +40,6 @@ This is still very much WIP, and as it has the capability to delete files so ple
 
 ## KNOWN BUGS
 
-- After scanning it will display "0 results" despite finding files
 - While scanning it will display "0 matches found" despite finding matches
 - The sorting for the list of duplicate files seems to be bugged
 
@@ -51,5 +47,8 @@ This is still very much WIP, and as it has the capability to delete files so ple
 
 - Overhaul GUI
 - Implement saving/loading results list
+- Implement a form of auto-selection for the results
+  - Ideally, a form of regex searching for the directory
 - Optimize scanning (starts to slow down after 10K+ files)
 - More customization (Instead of 'Clear Name Field' allow user to specify 'Clear x Field', etc)
+- Pause/Stop/Resume functionality when scanning
