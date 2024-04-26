@@ -49,7 +49,7 @@ def process_files():
         clear_name=clean_options['clear_name'],
         find_near_duplicates=duplicate_options['find_similar_matches'],
         tolerance=duplicate_options['similarity_threshold'],
-        progress_callback=update_progress
+        progress_callback=lambda current, total, file_path: update_progress(current, total, file_path, duplicate_positions, near_duplicate_positions)
     )
     end_time = time.time()
 
@@ -175,7 +175,7 @@ def process_files():
 
     messagebox.showinfo("Results", result_message)
 
-def update_progress(current, total, file_path):
+def update_progress(current, total, file_path, duplicate_positions, near_duplicate_positions):
     progress_bar["value"] = current
     progress_bar["maximum"] = total
     current_file_label.config(text=f"Current File: {os.path.relpath(file_path, directory_entry.get())}", anchor="w")
