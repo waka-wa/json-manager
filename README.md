@@ -7,7 +7,7 @@ The JSON File Manager is a Python GUI application for processing and managing JS
 ![JSON File Manager Screenshot](JSON_File_Manager_results.png)
 
 ## Warning
-This is still very much WIP, and as it has the capability to delete files so pleas proceed with caution
+This is still very much WIP, and as it has the capability to delete files so please proceed with caution.
 
 ## Features
 
