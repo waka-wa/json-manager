@@ -61,7 +61,6 @@ def remove_description(file_path):
     except (json.JSONDecodeError, FileNotFoundError) as e:
         logging.error(f"Error processing file: {file_path} - {str(e)}")
 
-
 def clear_name_value(file_path):
     try:
         with open(file_path, 'r+') as f:
@@ -74,8 +73,22 @@ def clear_name_value(file_path):
     except (json.JSONDecodeError, FileNotFoundError) as e:
         logging.error(f"Error processing file: {file_path} - {str(e)}")
 
+def round_positions_in_file(file_path, num_decimals):
+    try:
+        with open(file_path, 'r+') as f:
+            data = json.load(f)
+            position = data.get('position')
+            if position:
+                rounded_position = round_position(position, num_decimals, file_path)
+                if rounded_position is not None:
+                    data['position'] = list(rounded_position)
+                    f.seek(0)
+                    json.dump(data, f, indent=4)
+                    f.truncate()
+    except (json.JSONDecodeError, FileNotFoundError) as e:
+        logging.error(f"Error processing file: {file_path} - {str(e)}")
 
-def find_duplicate_and_near_duplicate_positions(directory_path, duplicates, near_duplicates, file_pattern='*.json', ignore_empty=False, num_decimals=None, save_rounded=False, update_name=False, remove_description=False, clear_name=False, find_near_duplicates=False, tolerance=1, progress_callback=None):
+def find_duplicate_and_near_duplicate_positions(directory_path, duplicates, near_duplicates, file_pattern='*.json', ignore_empty=False, num_decimals=None, update_name=False, remove_description=False, clear_name=False, round_positions=False, find_near_duplicates=False, tolerance=1, progress_callback=None):
     position_to_files = defaultdict(list)
     duplicate_positions = set()
     near_duplicate_positions = set()
@@ -92,30 +105,25 @@ def find_duplicate_and_near_duplicate_positions(directory_path, duplicates, near
         try:
             position = extract_positions(file_path)
             if position or not ignore_empty:
+                if round_positions:
+                    round_positions_in_file(file_path, num_decimals)
                 rounded_position = round_position(position, num_decimals, file_path) if num_decimals is not None else position
                 if rounded_position is not None:
                     if rounded_position in position_to_files:
                         position_to_files[rounded_position].append(file_path)
                         duplicate_positions.add(rounded_position)
-                        duplicates.append(file_path)  # Update the duplicates list
+                        duplicates.add(file_path)  # Update the duplicates set
                     elif find_near_duplicates:
                         for existing_position in position_to_files:
                             if np.all(np.abs(np.array(rounded_position) - np.array(existing_position)) <= tolerance):
                                 position_to_files[existing_position].append(file_path)
                                 near_duplicate_positions.add(existing_position)
-                                near_duplicates.append(file_path)  # Update the near_duplicates list
+                                near_duplicates.add(file_path)  # Update the near_duplicates set
                                 break
                         else:
                             position_to_files[rounded_position] = [file_path]
                     else:
                         position_to_files[rounded_position] = [file_path]
-                    if save_rounded:
-                        with open(file_path, 'r+') as f:
-                            data = json.load(f)
-                            data['position'] = list(rounded_position)
-                            f.seek(0)
-                            json.dump(data, f, indent=4)
-                            f.truncate()
                     if update_name:
                         update_name_field(file_path)
                     if remove_description:

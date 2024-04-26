@@ -4,6 +4,7 @@ from json_file_manager import find_duplicate_and_near_duplicate_positions
 import os
 import threading
 import time
+import shutil
 
 def select_directory():
     directory = filedialog.askdirectory()
@@ -19,15 +20,15 @@ def process_files():
     clean_options = {
         'clear_name': clear_name_var.get(),
         'write_filename_to_name': write_filename_to_name_var.get(),
-        'remove_description': remove_description_var.get()
+        'remove_description': remove_description_var.get(),
+        'round_positions': round_positions_var.get(),
+        'round_to_decimal': int(round_to_decimal_entry.get()) if round_positions_var.get() else None
     }
 
     duplicate_options = {
         'find_exact_duplicates': find_exact_duplicates_var.get(),
         'find_similar_matches': find_similar_matches_var.get(),
-        'similarity_threshold': float(similarity_threshold_entry.get()) if find_similar_matches_var.get() else None,
-        'round_and_save_data': round_and_save_data_var.get(),
-        'round_to_decimal': int(round_to_decimal_entry.get()) if round_and_save_data_var.get() else None
+        'similarity_threshold': float(similarity_threshold_entry.get()) if find_similar_matches_var.get() else None
     }
 
     progress_bar.pack()
@@ -42,11 +43,11 @@ def process_files():
         directory,
         duplicates,
         near_duplicates,
-        num_decimals=duplicate_options['round_to_decimal'],
-        save_rounded=duplicate_options['round_and_save_data'],
+        num_decimals=clean_options['round_to_decimal'],
         update_name=clean_options['write_filename_to_name'],
         remove_description=clean_options['remove_description'],
         clear_name=clean_options['clear_name'],
+        round_positions=clean_options['round_positions'],
         find_near_duplicates=duplicate_options['find_similar_matches'],
         tolerance=duplicate_options['similarity_threshold'],
         progress_callback=lambda current, total, file_path: update_progress(current, total, file_path, duplicate_positions, near_duplicate_positions)
@@ -58,9 +59,11 @@ def process_files():
 
     duplicate_window = tk.Toplevel(window)
     duplicate_window.title("Duplicate JSON Files")
+    duplicate_window.geometry("800x600")
+    duplicate_window.resizable(True, True)
 
     duplicate_frame = tk.Frame(duplicate_window)
-    duplicate_frame.pack(pady=10, padx=10)
+    duplicate_frame.pack(fill=tk.BOTH, expand=True, pady=10, padx=10)
 
     duplicate_listbox = tk.Listbox(duplicate_frame, selectmode=tk.MULTIPLE, width=100, height=20)
     duplicate_listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
@@ -73,26 +76,53 @@ def process_files():
 
     for position in duplicate_positions:
         for file_path in position_to_files[position]:
-            duplicate_listbox.insert(tk.END, file_path)
+            duplicate_listbox.insert(tk.END, os.path.relpath(file_path, directory))
         duplicate_listbox.insert(tk.END, "")  # Add a blank line between groups
 
     for position in near_duplicate_positions:
         for file_path in position_to_files[position]:
-            duplicate_listbox.insert(tk.END, file_path)
+            duplicate_listbox.insert(tk.END, os.path.relpath(file_path, directory))
         duplicate_listbox.insert(tk.END, "")  # Add a blank line between groups
 
     def delete_selected_files():
         selected_indices = duplicate_listbox.curselection()
         selected_files = [duplicate_listbox.get(index) for index in selected_indices]
-        confirm = messagebox.askyesno("Confirm Deletion", f"Are you sure you want to delete the following files?\n\n{', '.join(selected_files)}")
+        selected_files = [os.path.join(directory, file) for file in selected_files]
+        confirm_message = "Are you sure you want to delete the following files?\n\n"
+        confirm_message += "\n".join(os.path.relpath(file, directory) for file in selected_files)
+        confirm = messagebox.askyesno("Confirm Deletion", confirm_message)
         if confirm:
             for file_path in selected_files:
                 try:
                     os.remove(file_path)
-                    duplicate_listbox.delete(duplicate_listbox.get(0, tk.END).index(file_path))
+                    duplicate_listbox.delete(duplicate_listbox.get(0, tk.END).index(os.path.relpath(file_path, directory)))
                 except FileNotFoundError:
                     pass
             messagebox.showinfo("Deletion Complete", "Selected files have been deleted.")
+
+    def move_selected_files():
+        selected_indices = duplicate_listbox.curselection()
+        selected_files = [duplicate_listbox.get(index) for index in selected_indices]
+        selected_files = [os.path.join(directory, file) for file in selected_files]
+        destination_folder = filedialog.askdirectory(title="Select Destination Folder")
+        if destination_folder:
+            confirm_message = "Are you sure you want to move the following files?\n\n"
+            confirm_message += "\n".join(os.path.relpath(file, directory) for file in selected_files)
+            confirm = messagebox.askyesno("Confirm Move", confirm_message)
+            if confirm:
+                for file_path in selected_files:
+                    try:
+                        if preserve_directory_tree_var.get():
+                            relative_path = os.path.relpath(file_path, directory)
+                            destination_path = os.path.join(destination_folder, relative_path)
+                            os.makedirs(os.path.dirname(destination_path), exist_ok=True)
+                        else:
+                            destination_path = os.path.join(destination_folder, os.path.basename(file_path))
+                        shutil.move(file_path, destination_path)
+                        duplicate_listbox.delete(duplicate_listbox.get(0, tk.END).index(os.path.relpath(file_path, directory)))
+                    except FileNotFoundError:
+                        pass
+                messagebox.showinfo("Move Complete", "Selected files have been moved.")
 
     def sort_listbox(sort_option):
         file_list = list(duplicate_listbox.get(0, tk.END))
@@ -128,8 +158,18 @@ def process_files():
     alphabetical_radio = tk.Radiobutton(sort_frame, text="Alphabetical", variable=sort_var, value="alphabetical", command=lambda: sort_listbox("alphabetical"))
     alphabetical_radio.pack(side=tk.LEFT)
 
-    delete_button = tk.Button(duplicate_window, text="Delete Selected Files", command=delete_selected_files)
-    delete_button.pack(pady=10)
+    action_frame = tk.Frame(duplicate_window)
+    action_frame.pack(pady=10)
+
+    delete_button = tk.Button(action_frame, text="Delete Selected Files", command=delete_selected_files)
+    delete_button.pack(side=tk.LEFT, padx=5)
+
+    preserve_directory_tree_var = tk.BooleanVar()
+    preserve_directory_tree_checkbox = tk.Checkbutton(action_frame, text="Preserve Directory Tree", variable=preserve_directory_tree_var)
+    preserve_directory_tree_checkbox.pack(side=tk.LEFT, padx=5)
+
+    move_button = tk.Button(action_frame, text="Move Selected Files", command=move_selected_files)
+    move_button.pack(side=tk.LEFT)
 
     def save_results():
         file_path = filedialog.asksaveasfilename(defaultextension=".txt", filetypes=[("Text Files", "*.txt"), ("All Files", "*.*")])
@@ -137,19 +177,19 @@ def process_files():
             try:
                 with open(file_path, "w") as file:
                     file.write("Exact Duplicate Positions:\n")
-                    for position in duplicates:
+                    for position in duplicate_positions:
                         file.write(f"Position: {position}\n")
                         file.write("Files:\n")
                         for file_path in position_to_files[position]:
-                            file.write(f"{file_path}\n")
+                            file.write(f"{os.path.relpath(file_path, directory)}\n")
                         file.write("\n")
 
                     file.write("\nNear Duplicate Positions:\n")
-                    for position in near_duplicates:
+                    for position in near_duplicate_positions:
                         file.write(f"Position: {position}\n")
                         file.write("Files:\n")
                         for file_path in position_to_files[position]:
-                            file.write(f"{file_path}\n")
+                            file.write(f"{os.path.relpath(file_path, directory)}\n")
                         file.write("\n")
 
                 messagebox.showinfo("Save Results", "Results saved successfully.")
@@ -226,6 +266,20 @@ remove_description_var = tk.BooleanVar()
 remove_description_checkbox = tk.Checkbutton(cleaning_frame, text="Remove Description Field", variable=remove_description_var)
 remove_description_checkbox.pack(anchor=tk.W)
 
+round_positions_var = tk.BooleanVar()
+round_positions_checkbox = tk.Checkbutton(cleaning_frame, text="Round Positional Data", variable=round_positions_var)
+round_positions_checkbox.pack(anchor=tk.W)
+
+round_to_decimal_frame = tk.Frame(cleaning_frame)
+round_to_decimal_frame.pack(anchor=tk.W, padx=20)
+
+round_to_decimal_label = tk.Label(round_to_decimal_frame, text="Round to Decimal:")
+round_to_decimal_label.pack(side=tk.LEFT)
+
+round_to_decimal_entry = tk.Entry(round_to_decimal_frame, width=5)
+round_to_decimal_entry.insert(tk.END, "2")
+round_to_decimal_entry.pack(side=tk.LEFT)
+
 # Duplicate options
 duplicate_frame = tk.LabelFrame(window, text="Duplicate Options")
 duplicate_frame.pack(pady=10, padx=10, fill=tk.BOTH)
@@ -248,20 +302,6 @@ similarity_threshold_entry = tk.Entry(similarity_threshold_frame, width=5)
 similarity_threshold_entry.insert(tk.END, "0.9")
 similarity_threshold_entry.pack(side=tk.LEFT)
 
-round_and_save_data_var = tk.BooleanVar()
-round_and_save_data_checkbox = tk.Checkbutton(duplicate_frame, text="Round and Save Data", variable=round_and_save_data_var)
-round_and_save_data_checkbox.pack(anchor=tk.W)
-
-round_to_decimal_frame = tk.Frame(duplicate_frame)
-round_to_decimal_frame.pack(anchor=tk.W, padx=20)
-
-round_to_decimal_label = tk.Label(round_to_decimal_frame, text="Round to Decimal:")
-round_to_decimal_label.pack(side=tk.LEFT)
-
-round_to_decimal_entry = tk.Entry(round_to_decimal_frame, width=5)
-round_to_decimal_entry.insert(tk.END, "2")
-round_to_decimal_entry.pack(side=tk.LEFT)
-
 # Progress bar
 progress_frame = tk.Frame(window)
 progress_frame.pack(fill=tk.X, padx=10, pady=5)
@@ -281,11 +321,6 @@ files_scanned_label.pack(side=tk.RIGHT)
 # Start button
 start_button = tk.Button(window, text="Begin!", command=start_process)
 start_button.pack(pady=10)
-
-# Initialize variables
-duplicates = []
-near_duplicates = []
-start_time = 0
 
 # Run the GUI
 window.mainloop()
