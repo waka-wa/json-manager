@@ -46,3 +46,10 @@ This is still very much WIP, and as it has the capability to delete files so ple
 - After scanning it will display "0 results" despite finding files
 - While scanning it will display "0 matches found" despite finding matches
 - The sorting for the list of duplicate files seems to be bugged
+
+## Future Plans
+
+- Overhaul GUI
+- Implement saving/loading results list
+- Optimize scanning (starts to slow down after 10K+ files)
+- More customization (Instead of 'Clear Name Field' allow user to specify 'Clear x Field', etc)
