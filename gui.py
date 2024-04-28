@@ -5,6 +5,7 @@ import os
 import threading
 import time
 import shutil
+import glob
 
 def select_directory():
     directory = filedialog.askdirectory()
@@ -41,7 +42,9 @@ def process_files():
     duplicate_positions = set()
     near_duplicate_positions = set()
 
-    position_to_files, duplicate_positions, near_duplicate_positions, invalid_positions = find_duplicate_and_near_duplicate_positions(
+    auto_select_dir = auto_select_entry.get()
+
+    position_to_files, duplicate_positions, near_duplicate_positions, invalid_positions, filenames_within_group = find_duplicate_and_near_duplicate_positions(
         directory,
         duplicates,
         near_duplicates,
@@ -52,8 +55,10 @@ def process_files():
         round_positions=clean_options['round_positions'],
         find_near_duplicates=duplicate_options['find_similar_matches'],
         tolerance=duplicate_options['similarity_threshold'],
-        progress_callback=lambda current, total, file_path: update_progress(current, total, file_path, duplicate_positions, near_duplicate_positions)
+        progress_callback=lambda current, total, file_path: update_progress(current, total, file_path, duplicate_positions, near_duplicate_positions),
+        auto_select_dir=auto_select_dir
     )
+
     end_time = time.time()
 
     progress_bar.stop()
@@ -63,6 +68,45 @@ def process_files():
     duplicate_window.title("Duplicate JSON Files")
     duplicate_window.geometry("800x600")
     duplicate_window.resizable(True, True)
+
+    def auto_select_files():
+        auto_select_dir = auto_select_entry.get()
+        if auto_select_dir:
+            auto_select_pattern = os.path.join(auto_select_dir, '*')
+            auto_select_files = glob.glob(auto_select_pattern)
+
+            selected_indices = []
+            for index, result_file in enumerate(duplicate_listbox.get(0, tk.END)):
+                if result_file in auto_select_files:
+                    selected_indices.append(index)
+
+            duplicate_listbox.selection_set(selected_indices)
+
+            for rounded_position, file_paths in position_to_files.items():
+                selected_file = None
+                for file_path in file_paths:
+                    if file_path not in filenames_within_group[rounded_position]:
+                        filenames_within_group[rounded_position].add(file_path)
+                        selected_file = file_path
+                        break
+
+                if auto_select_dir and selected_file:
+                    auto_select_pattern = os.path.join(auto_select_dir, '*')
+                    if selected_file.startswith(auto_select_pattern):
+                        index = duplicate_listbox.get(0, tk.END).index(os.path.relpath(selected_file, directory))
+                        duplicate_listbox.itemconfig(index, bg='lightblue')
+
+    auto_select_frame = tk.Frame(duplicate_window)
+    auto_select_frame.pack(pady=10)
+
+    auto_select_label = tk.Label(auto_select_frame, text="Auto-Select Directory (with wildcards):")
+    auto_select_label.pack(side=tk.LEFT)
+
+    auto_select_entry = tk.Entry(auto_select_frame, width=30)
+    auto_select_entry.pack(side=tk.LEFT, padx=5)
+
+    auto_select_button = tk.Button(auto_select_frame, text="Auto-Select", command=auto_select_files)
+    auto_select_button.pack(side=tk.LEFT)
 
     duplicate_frame = tk.Frame(duplicate_window)
     duplicate_frame.pack(fill=tk.BOTH, expand=True, pady=10, padx=10)
@@ -125,40 +169,6 @@ def process_files():
                     except FileNotFoundError:
                         pass
                 messagebox.showinfo("Move Complete", "Selected files have been moved.")
-
-    def sort_listbox(sort_option):
-        file_list = list(duplicate_listbox.get(0, tk.END))
-        file_list = [file for file in file_list if file.strip()]  # Remove empty lines
-        if sort_option == "exact" or sort_option == "similar":
-            try:
-                file_list.sort(key=lambda x: (position_to_files[tuple(map(float, x.split()[-3:]))], x), reverse=(sort_option == "similar"))
-            except (KeyError, IndexError, ValueError):
-                file_list.sort()  # Fallback to alphabetical sorting
-        else:
-            file_list.sort()
-        duplicate_listbox.delete(0, tk.END)
-        for file in file_list:
-            duplicate_listbox.insert(tk.END, file)
-            if file == file_list[-1] or (len(file.split()[-3:]) == 3 and tuple(map(float, file.split()[-3:])) != tuple(map(float, duplicate_listbox.get(duplicate_listbox.index(file) + 1).split()[-3:]))):
-                duplicate_listbox.insert(tk.END, "")  # Add a blank line between groups
-
-    sort_frame = tk.Frame(duplicate_window)
-    sort_frame.pack(pady=10)
-
-    sort_label = tk.Label(sort_frame, text="Sort by:")
-    sort_label.pack(side=tk.LEFT)
-
-    sort_var = tk.StringVar()
-    sort_var.set("exact")
-
-    exact_radio = tk.Radiobutton(sort_frame, text="Exact Matches", variable=sort_var, value="exact", command=lambda: sort_listbox("exact"))
-    exact_radio.pack(side=tk.LEFT)
-
-    similar_radio = tk.Radiobutton(sort_frame, text="Similar Matches", variable=sort_var, value="similar", command=lambda: sort_listbox("similar"))
-    similar_radio.pack(side=tk.LEFT)
-
-    alphabetical_radio = tk.Radiobutton(sort_frame, text="Alphabetical", variable=sort_var, value="alphabetical", command=lambda: sort_listbox("alphabetical"))
-    alphabetical_radio.pack(side=tk.LEFT)
 
     action_frame = tk.Frame(duplicate_window)
     action_frame.pack(pady=10)

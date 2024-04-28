@@ -5,6 +5,7 @@ from collections import defaultdict
 from pathlib import Path
 from tqdm import tqdm
 import numpy as np
+import glob
 
 invalid_positions = set()
 
@@ -88,10 +89,12 @@ def round_positions_in_file(file_path, num_decimals):
     except (json.JSONDecodeError, FileNotFoundError) as e:
         logging.error(f"Error processing file: {file_path} - {str(e)}")
 
-def find_duplicate_and_near_duplicate_positions(directory_path, duplicates, near_duplicates, file_pattern='*.json', ignore_empty=False, num_decimals=None, update_name=False, remove_description=False, clear_name=False, round_positions=False, find_near_duplicates=False, tolerance=1, progress_callback=None):
+def find_duplicate_and_near_duplicate_positions(directory_path, duplicates, near_duplicates, file_pattern='*.json', ignore_empty=False, num_decimals=None, update_name=False, remove_description=False, clear_name=False, round_positions=False, find_near_duplicates=False, tolerance=1, auto_select_dir=None, progress_callback=None):
     position_to_files = defaultdict(list)
     duplicate_positions = set()
     near_duplicate_positions = set()
+
+    filenames_within_group = defaultdict(set)
 
     file_list = []
     for root, _, files in os.walk(directory_path):
@@ -136,7 +139,15 @@ def find_duplicate_and_near_duplicate_positions(directory_path, duplicates, near
         if progress_callback:
             progress_callback(index, total_files, file_path)
 
-    return position_to_files, duplicate_positions, near_duplicate_positions, invalid_positions
+    for rounded_position, file_paths in position_to_files.items():
+        selected_file = None
+        for file_path in file_paths:
+            if file_path not in filenames_within_group[rounded_position]:
+                filenames_within_group[rounded_position].add(file_path)
+                selected_file = file_path
+                break
+
+    return position_to_files, duplicate_positions, near_duplicate_positions, invalid_positions, filenames_within_group
 
 def save_preferences(preferences):
     preferences_file = Path(script_dir, 'preferences.json')
