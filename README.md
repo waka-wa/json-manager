@@ -40,19 +40,17 @@ This is still very much WIP, and as it has the capability to delete files so ple
 
 ## KNOWN BUGS
 
+- If too many files are selected for moving/deletion the box gets cut off at the bottom
 - While scanning it will display "0 matches found" despite finding matches
 - The sorting for the list of duplicate files seems to be bugged
-  - (When clicking 'Sort By:' the list doesn't group the matches together)
 
 ## Future Plans
 
 - Overhaul GUI
-- Implement saving/loading results list
-- Allow selection of multiple directories
+- Implement loading results list
 - Display the position itself for each group
-- Implement a form of auto-selection for the results
-  - Ideally, a form of regex searching for the directory
-  - Option to always ensure one of each matching file is preserved
+  - Currently position data is saved if "Save Results" is selected
+- Option to always ensure one of each matching file is preserved
 - Optimize scanning (starts to slow down after 10K+ files)
 - More customization (Instead of 'Clear Name Field' allow user to specify 'Clear x Field', etc)
 - Pause/Stop/Resume functionality when scanning

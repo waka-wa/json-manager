@@ -89,7 +89,7 @@ def round_positions_in_file(file_path, num_decimals):
     except (json.JSONDecodeError, FileNotFoundError) as e:
         logging.error(f"Error processing file: {file_path} - {str(e)}")
 
-def find_duplicate_and_near_duplicate_positions(directory_path, duplicates, near_duplicates, file_pattern='*.json', ignore_empty=False, num_decimals=None, update_name=False, remove_description=False, clear_name=False, round_positions=False, find_near_duplicates=False, tolerance=1, auto_select_dir=None, progress_callback=None):
+def find_duplicate_and_near_duplicate_positions(directory_path, duplicates, near_duplicates, file_pattern='*.json', ignore_empty=False, num_decimals=None, update_name=False, remove_description=False, clear_name=False, round_positions=False, find_near_duplicates=False, tolerance=1, progress_callback=None):
     position_to_files = defaultdict(list)
     duplicate_positions = set()
     near_duplicate_positions = set()

@@ -42,8 +42,6 @@ def process_files():
     duplicate_positions = set()
     near_duplicate_positions = set()
 
-    auto_select_dir = auto_select_entry.get()
-
     position_to_files, duplicate_positions, near_duplicate_positions, invalid_positions, filenames_within_group = find_duplicate_and_near_duplicate_positions(
         directory,
         duplicates,
@@ -55,10 +53,8 @@ def process_files():
         round_positions=clean_options['round_positions'],
         find_near_duplicates=duplicate_options['find_similar_matches'],
         tolerance=duplicate_options['similarity_threshold'],
-        progress_callback=lambda current, total, file_path: update_progress(current, total, file_path, duplicate_positions, near_duplicate_positions),
-        auto_select_dir=auto_select_dir
+        progress_callback=lambda current, total, file_path: update_progress(current, total, file_path, duplicate_positions, near_duplicate_positions)
     )
-
     end_time = time.time()
 
     progress_bar.stop()
@@ -68,45 +64,6 @@ def process_files():
     duplicate_window.title("Duplicate JSON Files")
     duplicate_window.geometry("800x600")
     duplicate_window.resizable(True, True)
-
-    def auto_select_files():
-        auto_select_dir = auto_select_entry.get()
-        if auto_select_dir:
-            auto_select_pattern = os.path.join(auto_select_dir, '*')
-            auto_select_files = glob.glob(auto_select_pattern)
-
-            selected_indices = []
-            for index, result_file in enumerate(duplicate_listbox.get(0, tk.END)):
-                if result_file in auto_select_files:
-                    selected_indices.append(index)
-
-            duplicate_listbox.selection_set(selected_indices)
-
-            for rounded_position, file_paths in position_to_files.items():
-                selected_file = None
-                for file_path in file_paths:
-                    if file_path not in filenames_within_group[rounded_position]:
-                        filenames_within_group[rounded_position].add(file_path)
-                        selected_file = file_path
-                        break
-
-                if auto_select_dir and selected_file:
-                    auto_select_pattern = os.path.join(auto_select_dir, '*')
-                    if selected_file.startswith(auto_select_pattern):
-                        index = duplicate_listbox.get(0, tk.END).index(os.path.relpath(selected_file, directory))
-                        duplicate_listbox.itemconfig(index, bg='lightblue')
-
-    auto_select_frame = tk.Frame(duplicate_window)
-    auto_select_frame.pack(pady=10)
-
-    auto_select_label = tk.Label(auto_select_frame, text="Auto-Select Directory (with wildcards):")
-    auto_select_label.pack(side=tk.LEFT)
-
-    auto_select_entry = tk.Entry(auto_select_frame, width=30)
-    auto_select_entry.pack(side=tk.LEFT, padx=5)
-
-    auto_select_button = tk.Button(auto_select_frame, text="Auto-Select", command=auto_select_files)
-    auto_select_button.pack(side=tk.LEFT)
 
     duplicate_frame = tk.Frame(duplicate_window)
     duplicate_frame.pack(fill=tk.BOTH, expand=True, pady=10, padx=10)
@@ -129,6 +86,20 @@ def process_files():
         for file_path in position_to_files[position]:
             duplicate_listbox.insert(tk.END, os.path.relpath(file_path, directory))
         duplicate_listbox.insert(tk.END, "")  # Add a blank line between groups
+
+    def auto_select_files(directory):
+        auto_select_dir = auto_select_entry.get()
+        if auto_select_dir:
+            selected_indices = []
+            for index, result_file in enumerate(duplicate_listbox.get(0, tk.END)):
+                if result_file:
+                    if result_file.startswith(auto_select_dir):
+                        selected_indices.append(index)
+
+            duplicate_listbox.selection_clear(0, tk.END)  # Clear any previous selection
+            for index in selected_indices:
+                duplicate_listbox.selection_set(index)
+                duplicate_listbox.itemconfig(index, bg='lightblue')
 
     def delete_selected_files():
         selected_indices = duplicate_listbox.curselection()
@@ -183,11 +154,23 @@ def process_files():
     move_button = tk.Button(action_frame, text="Move Selected Files", command=move_selected_files)
     move_button.pack(side=tk.LEFT)
 
+    auto_select_frame = tk.Frame(duplicate_window)
+    auto_select_frame.pack(pady=10)
+
+    auto_select_label = tk.Label(auto_select_frame, text="Auto-Select Directory (with wildcards):")
+    auto_select_label.pack(side=tk.LEFT)
+
+    auto_select_entry = tk.Entry(auto_select_frame, width=30)
+    auto_select_entry.pack(side=tk.LEFT, padx=5)
+
+    auto_select_button = tk.Button(auto_select_frame, text="Select", command=lambda: auto_select_files(directory))
+    auto_select_button.pack(side=tk.LEFT)
+
     def save_results():
         file_path = filedialog.asksaveasfilename(defaultextension=".txt", filetypes=[("Text Files", "*.txt"), ("All Files", "*.*")])
         if file_path:
             try:
-                with open(file_path, "w") as file:
+                with open(file_path, "w", encoding="utf-8") as file:
                     file.write("Exact Duplicate Positions:\n")
                     for position in duplicate_positions:
                         file.write(f"Position: {position}\n")
