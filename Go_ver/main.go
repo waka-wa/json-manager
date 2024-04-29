@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"math"
 	"os"
@@ -565,7 +564,7 @@ func updateNameField(filePath string) error {
 		return fmt.Errorf("error marshaling JSON: %s - %w", filePath, err)
 	}
 
-	err = ioutil.WriteFile(filePath, updatedData, 0644)
+	err = os.WriteFile(filePath, updatedData, 0644)
 	if err != nil {
 		return fmt.Errorf("error writing file: %s - %w", filePath, err)
 	}
@@ -593,7 +592,7 @@ func removeDescription(filePath string) error {
 			return fmt.Errorf("error marshaling JSON: %s - %w", filePath, err)
 		}
 
-		err = ioutil.WriteFile(filePath, updatedData, 0644)
+		err = os.WriteFile(filePath, updatedData, 0644)
 		if err != nil {
 			return fmt.Errorf("error writing file: %s - %w", filePath, err)
 		}
@@ -626,7 +625,7 @@ func clearNameValue(filePath string) error {
 			return fmt.Errorf("error marshaling JSON: %s - %w", filePath, err)
 		}
 
-		err = ioutil.WriteFile(filePath, updatedData, 0644)
+		err = os.WriteFile(filePath, updatedData, 0644)
 		if err != nil {
 			return fmt.Errorf("error writing file: %s - %w", filePath, err)
 		}
@@ -657,7 +656,7 @@ func roundPositionsInFile(filePath string, numDecimals int) error {
 				return fmt.Errorf("error marshaling JSON: %s - %w", filePath, err)
 			}
 
-			err = ioutil.WriteFile(filePath, updatedData, 0644)
+			err = os.WriteFile(filePath, updatedData, 0644)
 			if err != nil {
 				return fmt.Errorf("error writing file: %s - %w", filePath, err)
 			}
@@ -773,12 +772,26 @@ func findDuplicateAndNearDuplicatePositions(directoryPath string, duplicates, ne
 }
 
 func stringToPosition(s string) []float64 {
-	var position []float64
-	err := json.Unmarshal([]byte(s), &position)
-	if err != nil {
-		log.Printf("Error converting string to position: %v", err)
+	// Remove the square brackets and any whitespace
+	s = strings.ReplaceAll(s, "[", "")
+	s = strings.ReplaceAll(s, "]", "")
+	s = strings.TrimSpace(s)
+
+	// Split the string by commas to get individual numbers
+	numberStrings := strings.Split(s, ",")
+
+	// Parse each number string into a float64 and store in a slice
+	var numbers []float64
+	for _, numStr := range numberStrings {
+		num, err := strconv.ParseFloat(strings.TrimSpace(numStr), 64)
+		if err == nil {
+			numbers = append(numbers, num)
+		} else {
+			log.Printf("Error parsing number: %v", err)
+		}
 	}
-	return position
+
+	return numbers
 }
 
 func nearlyEqual(a, b []float64, tolerance float64) bool {
