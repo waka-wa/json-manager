@@ -1,2 +1,7 @@
 __pycache__/json_file_manager.cpython-312.pyc
 error.log
+Go_ver/main.go
+go.mod
+go.sum
+go.work
+go.work.sum

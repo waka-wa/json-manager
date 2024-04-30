@@ -28,7 +28,7 @@ var (
 	duplicateListBox       *widget.List
 	selectedPositions      []widget.ListItemID
 	invalidPositions       = make(map[string]struct{})
-	positionToFiles        = make(map[string][]string)
+	positionToFiles        = make(map[[]float64][]string)
 	duplicatePositions     = make(map[string]struct{})
 	nearDuplicatePositions = make(map[string]struct{})
 	filenamesWithinGroup   = make(map[string]map[string]struct{})
@@ -685,10 +685,12 @@ func findDuplicateAndNearDuplicatePositions(directoryPath string, duplicates, ne
 	totalFiles := len(fileList)
 	for index, filePath := range fileList {
 		position, err := extractPositions(filePath)
+		log.Printf("Extracted position data: %v", position)
 		if err != nil {
 			log.Printf("Error processing file: %s - %v", filePath, err)
 			continue
 		}
+		log.Printf("Extracted position data: %v", position)
 
 		if position != nil || !ignoreEmpty {
 			if roundPos {
@@ -698,6 +700,7 @@ func findDuplicateAndNearDuplicatePositions(directoryPath string, duplicates, ne
 				}
 			}
 
+			log.Printf("Before rounding: %v", position)
 			var roundedPosition []float64
 			if numDecimals >= 0 {
 				roundedPosition = roundPosition(position, numDecimals, filePath)
@@ -706,26 +709,28 @@ func findDuplicateAndNearDuplicatePositions(directoryPath string, duplicates, ne
 			}
 
 			if roundedPosition != nil {
-				positionKey := fmt.Sprintf("%v", roundedPosition)
+				positionKey := fmt.Sprint(roundedPosition)
+				log.Printf("Comparing position: %v", roundedPosition)
 				mu.Lock()
-				if _, exists := positionToFiles[positionKey]; exists {
-					positionToFiles[positionKey] = append(positionToFiles[positionKey], filePath)
-					duplicatePositions[positionKey] = struct{}{}
-					duplicates[filePath] = struct{}{}
-				} else if findNearDuplicates {
-					for existingPositionKey := range positionToFiles {
-						existingPosition := stringToPosition(existingPositionKey)
-						if nearlyEqual(roundedPosition, existingPosition, tolerance) {
-							positionToFiles[existingPositionKey] = append(positionToFiles[existingPositionKey], filePath)
-							nearDuplicatePositions[existingPositionKey] = struct{}{}
-							nearDuplicates[filePath] = struct{}{}
-							break
-						}
+				foundDuplicate := false
+				for existingPositionKey, existingFilePaths := range positionToFiles {
+					existingPosition := stringToPosition(existingPositionKey)
+					log.Printf("Comparing with existing position: %v", existingPosition)
+					if nearlyEqual(roundedPosition, existingPosition, 0.0) {
+						positionToFiles[existingPositionKey] = append(existingFilePaths, filePath)
+						duplicatePositions[existingPositionKey] = struct{}{}
+						duplicates[filePath] = struct{}{}
+						foundDuplicate = true
+						break
+					} else if findNearDuplicates && nearlyEqual(roundedPosition, existingPosition, tolerance) {
+						positionToFiles[existingPositionKey] = append(existingFilePaths, filePath)
+						nearDuplicatePositions[existingPositionKey] = struct{}{}
+						nearDuplicates[filePath] = struct{}{}
+						foundDuplicate = true
+						break
 					}
-					if _, exists := nearDuplicates[filePath]; !exists {
-						positionToFiles[positionKey] = []string{filePath}
-					}
-				} else {
+				}
+				if !foundDuplicate {
 					positionToFiles[positionKey] = []string{filePath}
 				}
 				mu.Unlock()
