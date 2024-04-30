@@ -1,11 +1,10 @@
-from utils import extract_positions, round_position, update_name_field, remove_description, clear_name_value, round_positions_in_file
+from utils import extract_positions, round_position, update_name_field, remove_description, clear_name_value, round_positions_in_file, coarse_hash, euclidean_distance
 from collections import defaultdict
 import os
 import logging
-import numpy as np
 
-def find_duplicate_and_near_duplicate_positions(directory_path, duplicates, near_duplicates, file_pattern='*.json', ignore_empty=False, num_decimals=None, update_name=False, remove_description=False, clear_name=False, round_positions=False, find_near_duplicates=False, tolerance=1, progress_callback=None):
-    position_to_files = defaultdict(list)
+def find_duplicate_and_near_duplicate_positions(directory_path, duplicates, near_duplicates, file_pattern='*.json', ignore_empty=False, num_decimals=None, update_name=False, remove_description=False, clear_name=False, round_positions=False, find_near_duplicates=False, tolerance=1, grid_cell_size=2, progress_callback=None):
+    position_groups = defaultdict(list)
     duplicate_positions = set()
     near_duplicate_positions = set()
 
@@ -27,21 +26,8 @@ def find_duplicate_and_near_duplicate_positions(directory_path, duplicates, near
                     round_positions_in_file(file_path, num_decimals)
                 rounded_position = round_position(position, num_decimals, file_path) if num_decimals is not None else position
                 if rounded_position is not None:
-                    if rounded_position in position_to_files:
-                        position_to_files[rounded_position].append(file_path)
-                        duplicate_positions.add(rounded_position)
-                        duplicates.add(file_path)
-                    elif find_near_duplicates:
-                        for existing_position in position_to_files:
-                            if np.all(np.abs(np.array(rounded_position) - np.array(existing_position)) <= tolerance):
-                                position_to_files[existing_position].append(file_path)
-                                near_duplicate_positions.add(existing_position)
-                                near_duplicates.add(file_path)
-                                break
-                        else:
-                            position_to_files[rounded_position] = [file_path]
-                    else:
-                        position_to_files[rounded_position] = [file_path]
+                    group_key = coarse_hash(rounded_position, grid_cell_size)
+                    position_groups[group_key].append((rounded_position, file_path))
                     if update_name:
                         update_name_field(file_path)
                     if remove_description:
@@ -54,7 +40,22 @@ def find_duplicate_and_near_duplicate_positions(directory_path, duplicates, near
         if progress_callback:
             progress_callback(index, total_files, file_path)
 
-    for rounded_position, file_paths in position_to_files.items():
+    for positions_in_group in position_groups.values():
+        for i in range(len(positions_in_group)):
+            for j in range(i + 1, len(positions_in_group)):
+                pos1, file1 = positions_in_group[i]
+                pos2, file2 = positions_in_group[j]
+
+                if pos1 == pos2:
+                    duplicate_positions.add(pos1)
+                    duplicates.add(file1)
+                    duplicates.add(file2)
+                elif find_near_duplicates and euclidean_distance(pos1, pos2) <= tolerance:
+                    near_duplicate_positions.add(pos1)
+                    near_duplicates.add(file1)
+                    near_duplicates.add(file2)
+
+    for rounded_position, file_paths in position_groups.items():
         selected_file = None
         for file_path in file_paths:
             if file_path not in filenames_within_group[rounded_position]:
@@ -62,4 +63,4 @@ def find_duplicate_and_near_duplicate_positions(directory_path, duplicates, near
                 selected_file = file_path
                 break
 
-    return position_to_files, duplicate_positions, near_duplicate_positions, filenames_within_group
+    return position_groups, duplicate_positions, near_duplicate_positions, filenames_within_group

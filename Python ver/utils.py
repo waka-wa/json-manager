@@ -1,10 +1,20 @@
 import json
 import os
 import logging
+import math
 
 invalid_positions = set()
 
 logging.basicConfig(filename='error.log', level=logging.ERROR, format='%(asctime)s - %(levelname)s - %(message)s')
+
+def coarse_hash(position, grid_cell_size):
+    x, y, z = position
+    return hash((math.floor(x / grid_cell_size),
+                 math.floor(y / grid_cell_size),
+                 math.floor(z / grid_cell_size)))
+
+def euclidean_distance(pos1, pos2):
+    return math.sqrt(sum((a - b) ** 2 for a, b in zip(pos1, pos2)))
 
 def extract_positions(file_path):
     try:

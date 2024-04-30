@@ -42,7 +42,9 @@ def create_gui():
         duplicate_positions = set()
         near_duplicate_positions = set()
 
-        position_to_files, duplicate_positions, near_duplicate_positions, invalid_positions, filenames_within_group = find_duplicate_and_near_duplicate_positions(
+        grid_cell_size = float(grid_cell_size_entry.get())
+
+        position_to_files, duplicate_positions, near_duplicate_positions, filenames_within_group = find_duplicate_and_near_duplicate_positions(
             directory,
             duplicates,
             near_duplicates,
@@ -53,6 +55,7 @@ def create_gui():
             round_positions=clean_options['round_positions'],
             find_near_duplicates=duplicate_options['find_similar_matches'],
             tolerance=duplicate_options['similarity_threshold'],
+            grid_cell_size=grid_cell_size,
             progress_callback=lambda current, total, file_path: update_progress(current, total, file_path, duplicate_positions, near_duplicate_positions)
         )
         end_time = time.time()
@@ -316,6 +319,17 @@ def create_gui():
     # Start button
     start_button = tk.Button(window, text="Begin!", command=start_process)
     start_button.pack(pady=10)
+
+    # Grid cell size adjustment
+    grid_cell_size_frame = tk.Frame(duplicate_frame)
+    grid_cell_size_frame.pack(anchor=tk.W, padx=20)
+
+    grid_cell_size_label = tk.Label(grid_cell_size_frame, text="Grid Cell Size:")
+    grid_cell_size_label.pack(side=tk.LEFT)
+
+    grid_cell_size_entry = tk.Entry(grid_cell_size_frame, width=5)
+    grid_cell_size_entry.insert(tk.END, "2")
+    grid_cell_size_entry.pack(side=tk.LEFT)
 
     # Run the GUI
     window.mainloop()
